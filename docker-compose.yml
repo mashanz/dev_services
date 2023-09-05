@@ -1,0 +1,78 @@
+version: "3.8"
+
+services:
+  pg_master:
+    container_name: pg-master
+    restart: always
+    build: ./postgres/master
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - PG_REP_USER=${PG_REP_USER}
+      - PG_REP_PASSWORD=${PG_REP_PASSWORD}
+    ports:
+      - ${PG_PORT_MASTER}:5432
+    networks:
+      default:
+        aliases:
+          - pg_cluster
+  pg_slave:
+    container_name: pg-slave
+    restart: always
+    build: ./postgres/slave
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - PG_REP_USER=${PG_REP_USER}
+      - PG_REP_PASSWORD=${PG_REP_PASSWORD}
+      - PG_MASTER_HOST=${PG_MASTER_HOST}
+    ports:
+      - ${PG_PORT_SLAVE}:5432
+    networks:
+      default:
+        aliases:
+          - pg_cluster
+  mongo:
+    container_name: mongo
+    restart: always
+    image: mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - ${MONGO_PORT}:27017
+  mongo-express:
+    container_name: mongo-express
+    restart: always
+    image: mongo-express
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:${MONGO_PORT}
+    ports:
+      - ${MONGO_EXPRESS_PORT}:8081
+    depends_on:
+      - mongo
+  redis-stack:
+    container_name: redis-stack
+    image: redis/redis-stack
+    ports:
+      - ${REDIS_PORT_SERVER}:6379
+      - ${REDIS_PORT_INSIGHT}:8001
+  rabitmqtt:
+    container_name: rabitmqtt
+    restart: always
+    image: rabbitmq:3-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - ${RABBITMQ_PORT_SERVER}:5672
+      - ${RABBITMQ_PORT_MANAGEMENT}:15672
+
+volumes:
+  pg_data:
