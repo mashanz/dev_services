@@ -92,7 +92,7 @@ services:
   meilisearch:
     container_name: meilisearch
     restart: always
-    image: getmeili/meilisearch:v1.3
+    image: getmeili/meilisearch
     environment:
       - MEILI_ENV=development
     volumes:
@@ -102,7 +102,7 @@ services:
   vault:
     container_name: vault
     restart: always
-    image: vault
+    image: vault:1.13.3
     volumes:
       - ./vault/logs:/vault/logs
       - ./vault/file:/vault/file
