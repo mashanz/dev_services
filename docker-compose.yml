@@ -59,6 +59,7 @@ services:
       - mongo
   redis-stack:
     container_name: redis-stack
+    restart: always
     image: redis/redis-stack
     ports:
       - ${REDIS_PORT_SERVER}:6379
@@ -73,6 +74,41 @@ services:
     ports:
       - ${RABBITMQ_PORT_SERVER}:5672
       - ${RABBITMQ_PORT_MANAGEMENT}:15672
-
+  minio:
+    container_name: minio
+    restart: always
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./minio/data:/data
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+    ports:
+      - ${MINIO_PORT_WEB}:9000
+      - ${MINIO_PORT_SERVER}:9001
+  meilisearch:
+    container_name: meilisearch
+    restart: always
+    image: getmeili/meilisearch:v1.3
+    environment:
+      - MEILI_ENV=development
+    volumes:
+      - ./meilisearch:/meili_data
+    ports:
+      - ${MEILISEARCH_PORT}:7700
+  vault:
+    container_name: vault
+    restart: always
+    image: vault
+    volumes:
+      - ./vault/logs:/vault/logs
+      - ./vault/file:/vault/file
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_DEV_ROOT_TOKEN_ID}
+    ports:
+      - ${VAULT_PORT}:8200
 volumes:
   pg_data:

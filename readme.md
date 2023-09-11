@@ -16,3 +16,10 @@ Copy `.env.example` to `.env` and run `docker-compose up -d`
 - rabbitmq
   - rabbitmq: `localhost:5672`
   - rabbitmq-management: `localhost:15672`
+- minio
+  - minio: `localhost:9000`
+  - minio-service: `localhost:9001`
+- meilisearch
+  - meilisearch: `localhost:7700`
+- vault
+  - vault: `localhost:8200`

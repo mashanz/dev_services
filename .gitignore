@@ -1,1 +1,4 @@
 .env
+minio/
+meilisearch/
+vault/
