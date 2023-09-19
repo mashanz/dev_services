@@ -110,5 +110,15 @@ services:
       - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_DEV_ROOT_TOKEN_ID}
     ports:
       - ${VAULT_PORT}:8200
+  rethink:
+    container_name: rethink
+    restart: always
+    image: rethinkdb
+    ports:
+      - ${RETHINK_PORT}:8080
+      - ${RETHINK_PORT_SERVER}:28015
+      - ${RETHINK_PORT_CLUSTER}:29015
+    volumes:
+      - ./rethink/data:/data
 volumes:
   pg_data:
