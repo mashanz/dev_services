@@ -3,3 +3,4 @@ minio/
 meilisearch/
 vault/
 rethink/
+.DS_Store

@@ -45,25 +45,6 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     ports:
       - ${MONGO_PORT}:27017
-  mongo-express:
-    container_name: mongo-express
-    restart: always
-    image: mongo-express
-    environment:
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_INITDB_ROOT_USERNAME}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
-      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:${MONGO_PORT}
-    ports:
-      - ${MONGO_EXPRESS_PORT}:8081
-    depends_on:
-      - mongo
-  redis-stack:
-    container_name: redis-stack
-    restart: always
-    image: redis/redis-stack
-    ports:
-      - ${REDIS_PORT_SERVER}:6379
-      - ${REDIS_PORT_INSIGHT}:8001
   rabitmqtt:
     container_name: rabitmqtt
     restart: always
@@ -120,5 +101,75 @@ services:
       - ${RETHINK_PORT_CLUSTER}:29015
     volumes:
       - ./rethink/data:/data
+  cache:
+    image: "docker.io/readysettech/readyset:latest"
+    platform: linux/amd64
+    ports:
+      # The ReadySet Adapter listen port, i.e. what your application / SQL shell connects to
+      - "5433:5433"
+      # ReadySet Prometheus metrics available at http://localhost:6034/metrics
+      # e.g. curl -X GET http://localhost:6034/metrics
+      - "6034:6034"
+    environment:
+      DEPLOYMENT_ENV: quickstart_docker
+      DB_DIR: /state
+      PROMETHEUS_METRICS: true
+      QUERY_CACHING: explicit
+      QUERY_LOG: true
+      QUERY_LOG_AD_HOC: true
+      STANDALONE: true
+      DEPLOYMENT: docker_compose_deployment
+      LISTEN_ADDRESS: 0.0.0.0:5433
+      UPSTREAM_DB_URL: "postgres://postgres:postgres@pg_master:5432/core_actix"
+      CONTROLLER_ADDRESS: 0.0.0.0
+    volumes:
+      - "readyset:/state"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "127.0.0.1:6034/health"]
+      interval: 2s
+      timeout: 1s
+      retries: 5
+      start_period: 5s
+  prometheus:
+    image: "public.ecr.aws/readyset/readyset-prometheus:latest"
+    healthcheck:
+      test: ["CMD", "nc", "-vz", "localhost", "9090"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    expose:
+      - 9090
+    volumes:
+      - "prometheus:/prometheus"
+  pushgateway:
+    image: prom/pushgateway
+    expose:
+      - 9091
+  grafana:
+    image: "public.ecr.aws/readyset/readyset-grafana:latest"
+    ports:
+      - 4000:4000
+    environment:
+      UPSTREAM_DB_URL: "postgres://postgres:postgres@pg_master:5432/core_actix"
+      RS_PORT: 5433
+      RS_GRAFANA_PORT: 4000
+  dragonfly:
+    image: "docker.dragonflydb.io/dragonflydb/dragonfly"
+    # ulimits:
+    #   memlock: -1
+    # cpus: 8
+    ports:
+      - "6379:6379"
+    # For better performance, consider `host` mode instead `port` to avoid docker NAT.
+    # `host` mode is NOT currently supported in Swarm Mode.
+    # https://docs.docker.com/compose/compose-file/compose-file-v3/#network_mode
+    # network_mode: "host"
+    volumes:
+      - dragonflydata:/data
 volumes:
   pg_data:
+  prometheus:
+  readyset:
+  dragonflydata:
