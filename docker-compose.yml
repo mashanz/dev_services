@@ -1,50 +1,29 @@
 version: "3.8"
 
 services:
-  pg_master:
-    container_name: pg-master
+  postgres:
+    container_name: postgres
     restart: always
-    build: ./postgres/master
+    image: postgres:15-alpine
     volumes:
       - pg_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-      - PG_REP_USER=${PG_REP_USER}
-      - PG_REP_PASSWORD=${PG_REP_PASSWORD}
     ports:
       - ${PG_PORT_MASTER}:5432
-    networks:
-      default:
-        aliases:
-          - pg_cluster
-  pg_slave:
-    container_name: pg-slave
-    restart: always
-    build: ./postgres/slave
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - PG_REP_USER=${PG_REP_USER}
-      - PG_REP_PASSWORD=${PG_REP_PASSWORD}
-      - PG_MASTER_HOST=${PG_MASTER_HOST}
-    ports:
-      - ${PG_PORT_SLAVE}:5432
-    networks:
-      default:
-        aliases:
-          - pg_cluster
   mongo:
     container_name: mongo
     restart: always
-    image: mongo
+    image: mongo:7-jammy
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     ports:
       - ${MONGO_PORT}:27017
+    volumes:
+      - mongo_data:/data/db
   rabitmqtt:
     container_name: rabitmqtt
     restart: always
@@ -55,6 +34,8 @@ services:
     ports:
       - ${RABBITMQ_PORT_SERVER}:5672
       - ${RABBITMQ_PORT_MANAGEMENT}:15672
+    volumes:
+      - rabitmq_data:/var/lib/rabbitmq
   minio:
     container_name: minio
     restart: always
@@ -73,7 +54,7 @@ services:
   meilisearch:
     container_name: meilisearch
     restart: always
-    image: getmeili/meilisearch
+    image: getmeili/meilisearch:v1.4
     environment:
       - MEILI_ENV=development
     volumes:
@@ -94,7 +75,7 @@ services:
   rethink:
     container_name: rethink
     restart: always
-    image: rethinkdb
+    image: rethinkdb:2.4-bullseye-slim
     ports:
       - ${RETHINK_PORT}:8080
       - ${RETHINK_PORT_SERVER}:28015
@@ -102,7 +83,9 @@ services:
     volumes:
       - ./rethink/data:/data
   cache:
+    container_name: readyset
     image: "docker.io/readysettech/readyset:latest"
+    restart: always
     platform: linux/amd64
     ports:
       # The ReadySet Adapter listen port, i.e. what your application / SQL shell connects to
@@ -120,7 +103,7 @@ services:
       STANDALONE: true
       DEPLOYMENT: docker_compose_deployment
       LISTEN_ADDRESS: 0.0.0.0:5433
-      UPSTREAM_DB_URL: "postgres://postgres:postgres@pg_master:5432/core_actix"
+      UPSTREAM_DB_URL: "postgres://postgres:postgres@postgres:5432/core_actix"
       CONTROLLER_ADDRESS: 0.0.0.0
     volumes:
       - "readyset:/state"
@@ -133,7 +116,9 @@ services:
       retries: 5
       start_period: 5s
   prometheus:
+    container_name: prometheus
     image: "public.ecr.aws/readyset/readyset-prometheus:latest"
+    restart: always
     healthcheck:
       test: ["CMD", "nc", "-vz", "localhost", "9090"]
       interval: 5s
@@ -144,28 +129,26 @@ services:
     volumes:
       - "prometheus:/prometheus"
   pushgateway:
-    image: prom/pushgateway
+    container_name: pushgateway
+    image: prom/pushgateway:v1.6.2
     expose:
       - 9091
   grafana:
+    container_name: grafana
     image: "public.ecr.aws/readyset/readyset-grafana:latest"
+    restart: always
     ports:
       - 4000:4000
     environment:
-      UPSTREAM_DB_URL: "postgres://postgres:postgres@pg_master:5432/core_actix"
+      UPSTREAM_DB_URL: "postgres://postgres:postgres@postgres:5432/core_actix"
       RS_PORT: 5433
       RS_GRAFANA_PORT: 4000
   dragonfly:
+    container_name: dragonfly
     image: "docker.dragonflydb.io/dragonflydb/dragonfly"
-    # ulimits:
-    #   memlock: -1
-    # cpus: 8
+    restart: always
     ports:
-      - "6379:6379"
-    # For better performance, consider `host` mode instead `port` to avoid docker NAT.
-    # `host` mode is NOT currently supported in Swarm Mode.
-    # https://docs.docker.com/compose/compose-file/compose-file-v3/#network_mode
-    # network_mode: "host"
+      - ${REDIS_PORT_SERVER}:6379
     volumes:
       - dragonflydata:/data
 volumes:
@@ -173,3 +156,5 @@ volumes:
   prometheus:
   readyset:
   dragonflydata:
+  mongo_data:
+  rabitmq_data:
