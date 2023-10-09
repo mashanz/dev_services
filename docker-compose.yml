@@ -131,6 +131,7 @@ services:
   pushgateway:
     container_name: pushgateway
     image: prom/pushgateway:v1.6.2
+    restart: always
     expose:
       - 9091
   grafana:
